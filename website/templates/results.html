@@ -77,7 +77,12 @@
             Prediction confidence: <strong>{{ confidence_percentage }}%</strong>
           </p>
           <div class="mobile-margin-top-10">
-            <a class="button-primary w-button" href="/">Check Next Image</a>
+            <form action="{{ url_for('predict') }}" method="post" enctype="multipart/form-data">
+              <label class="button-primary w-button">
+                Check Next Image
+                <input type="file" name="file" style="display: none;" onchange="form.submit()">
+              </label>
+            </form>
           </div>
           <div class="testimonial-info-four">
             <div>
