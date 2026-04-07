@@ -151,7 +151,13 @@ def predict():
     treatments = treatment_dict.get(pred_class, [])
 
     # Render the results page with the prediction
-    return render_template('results.html', prediction=pred_class, probability=prob, treatments=treatments)
+    return render_template(
+        'results.html',
+        prediction=pred_class,
+        probability=prob,
+        confidence_percentage=round(float(prob) * 100, 1),
+        treatments=treatments,
+    )
 
 # Run the application   
 if __name__ == '__main__':
