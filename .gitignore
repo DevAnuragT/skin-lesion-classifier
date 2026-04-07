@@ -1,0 +1,7 @@
+.venv/
+.tools/
+.codex/
+__pycache__/
+*.pyc
+artifacts/
+datasets/

@@ -2,5 +2,7 @@ gunicorn
 flask
 keras
 numpy
+opencv-python-headless
 Pillow
 tensorflow
+tf_keras

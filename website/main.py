@@ -1,24 +1,71 @@
-from keras.models import load_model
+import os
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent
+RETRAINED_CANDIDATES = [
+    (
+        BASE_DIR / "models" / "skin_classifier.keras",
+        BASE_DIR / "models" / "class_names.json",
+    ),
+    (
+        BASE_DIR.parent / "artifacts" / "retrained_hf_strict_80" / "skin_classifier.keras",
+        BASE_DIR.parent / "artifacts" / "retrained_hf_strict_80" / "class_names.json",
+    ),
+    (
+        BASE_DIR.parent / "artifacts" / "retrained_hf" / "skin_classifier.keras",
+        BASE_DIR.parent / "artifacts" / "retrained_hf" / "class_names.json",
+    ),
+]
+
+if not any(model_path.exists() and class_path.exists() for model_path, class_path in RETRAINED_CANDIDATES):
+    os.environ.setdefault("TF_USE_LEGACY_KERAS", "1")
+
 from flask import Flask, render_template, request, jsonify
+from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import img_to_array
 import numpy as np
 import json
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 import io
-import os
 import cv2
 
 # Creating the app
-app = Flask(__name__)
+app = Flask(__name__, template_folder=str(BASE_DIR / "templates"))
+
+LEGACY_CLASSES = [
+    "Acne",
+    "Basal cell carcinoma",
+    "Benign Keratosis-like Lesions (BKL)",
+    "Atopic dermatitis(Eczema)",
+    "Actinic keratosis(AK)",
+    "Melanoma",
+    "Psoriasis",
+    "Tinea(Ringworm)",
+]
+
+
+def load_runtime_model():
+    for model_path, class_path in RETRAINED_CANDIDATES:
+        if model_path.exists() and class_path.exists():
+            with class_path.open() as handle:
+                metadata = json.load(handle)
+            class_order = metadata["class_order"]
+            classes = [metadata["app_labels"][class_key] for class_key in class_order]
+            image_size = metadata.get("image_size", 224)
+            return load_model(model_path), classes, image_size
+
+    legacy_model_path = BASE_DIR / "skin_disorder_classifier_EfficientNetB2.h5"
+    return load_model(legacy_model_path), LEGACY_CLASSES, 300
+
 
 # Loading the model
-model = load_model("skin_disorder_classifier_EfficientNetB2.h5")
+model, classes, image_size = load_runtime_model()
 
 # Loading the json file with the skin disorders
 def get_treatment(path):
     with open(path) as f:
         return json.load(f)
-treatment_dict = get_treatment("skin_disorder.json")
+treatment_dict = get_treatment(BASE_DIR / "skin_disorder.json")
 
 # function to check if the file is an allowed image type
 def allowed_file(filename):
@@ -56,7 +103,18 @@ def predict():
         return render_template('error.html', error='Only image files are allowed')
 
     # Open the image using PIL
-    image = Image.open(file)
+    try:
+        image = Image.open(file).convert("RGB")
+    except UnidentifiedImageError:
+        return render_template(
+            'error.html',
+            error='The uploaded file is not a valid readable image. Please try another JPG or PNG file.'
+        )
+    except Exception:
+        return render_template(
+            'error.html',
+            error='The uploaded image could not be opened. Please try another image file.'
+        )
 
     # check if the image contains human skin
     if not is_skin(np.array(image)):
@@ -64,18 +122,16 @@ def predict():
                                                     Please ensure that the image contains skin and try again.')
 
     # Preprocess the image
-    img = image.resize((300,300))
+    img = image.resize((image_size, image_size))
     img_array = img_to_array(img)
-    img = img_array / 255.0
+    # The saved model already includes an input Rescaling layer.
+    # Keep raw pixel values here to avoid normalizing twice.
+    img = img_array
     image = np.expand_dims(img, axis=0)
 
     # Make prediction
     pred = model.predict(image)
     class_idx = np.argmax(pred)
-
-    # Classes
-    classes = ["Acne", "Basal cell carcinoma", "Benign Keratosis-like Lesions (BKL)", "Atopic dermatitis(Eczema)",
-               "Actinic keratosis(AK)", "Melanoma", "Psoriasis","Tinea(Ringworm)"]
 
     # Predicted class
     pred_class = classes[class_idx]

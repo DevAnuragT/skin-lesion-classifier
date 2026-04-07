@@ -1,0 +1,23 @@
+{
+  "class_order": [
+    "acne",
+    "bcc",
+    "bkl",
+    "eczema",
+    "ak",
+    "melanoma",
+    "psoriasis",
+    "tinea"
+  ],
+  "app_labels": {
+    "acne": "Acne",
+    "bcc": "Basal cell carcinoma",
+    "bkl": "Benign Keratosis-like Lesions (BKL)",
+    "eczema": "Atopic dermatitis(Eczema)",
+    "ak": "Actinic keratosis(AK)",
+    "melanoma": "Melanoma",
+    "psoriasis": "Psoriasis",
+    "tinea": "Tinea(Ringworm)"
+  },
+  "image_size": 224
+}
