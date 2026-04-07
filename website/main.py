@@ -67,6 +67,18 @@ def get_treatment(path):
         return json.load(f)
 treatment_dict = get_treatment(BASE_DIR / "skin_disorder.json")
 
+TREATMENT_ALIASES = {
+    "Actinic keratosis": "Actinic keratosis(AK)",
+    "Actinic keratosis(AK)": "Actinic keratosis(AK)",
+    "Tinea(Ringworm)": "Tinea (Ringworm)",
+    "Tinea (Ringworm)": "Tinea (Ringworm)",
+}
+
+
+def get_treatments_for_prediction(predicted_label):
+    canonical_label = TREATMENT_ALIASES.get(predicted_label, predicted_label)
+    return treatment_dict.get(canonical_label, [])
+
 # function to check if the file is an allowed image type
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'png', 'jpg', 'jpeg'}
@@ -148,7 +160,7 @@ def predict():
                                                     Please consult a healthcare professional for an accurate diagnosis')
 
     # Treatment options
-    treatments = treatment_dict.get(pred_class, [])
+    treatments = get_treatments_for_prediction(pred_class)
 
     # Render the results page with the prediction
     return render_template(
