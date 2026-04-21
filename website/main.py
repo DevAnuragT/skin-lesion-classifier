@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import Any
 
 BASE_DIR = Path(__file__).resolve().parent
 RETRAINED_CANDIDATES = [
@@ -17,17 +18,24 @@ RETRAINED_CANDIDATES = [
     ),
 ]
 
-if not any(model_path.exists() and class_path.exists() for model_path, class_path in RETRAINED_CANDIDATES):
-    os.environ.setdefault("TF_USE_LEGACY_KERAS", "1")
+VIT_CANDIDATE_DIRS = [
+    BASE_DIR / "models",
+    BASE_DIR.parent / "artifacts" / "vit_150_tiny224_lowaug",
+    BASE_DIR.parent / "artifacts" / "vit_150_tiny160",
+    BASE_DIR.parent / "artifacts" / "vit_strict80_tiny160",
+    BASE_DIR.parent / "artifacts" / "vit_benchmark_cpu",
+]
+VIT_ENSEMBLE_METADATA = BASE_DIR / "models" / "vit_ensemble.json"
 
 from flask import Flask, render_template, request, jsonify
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing.image import img_to_array
 import numpy as np
 import json
 from PIL import Image, UnidentifiedImageError
 import io
 import cv2
+
+IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
+IMAGENET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 
 # Creating the app
 app = Flask(__name__, template_folder=str(BASE_DIR / "templates"))
@@ -44,22 +52,224 @@ LEGACY_CLASSES = [
 ]
 
 
-def load_runtime_model():
+def _read_json(path: Path) -> dict[str, Any]:
+    with path.open() as handle:
+        return json.load(handle)
+
+
+def _resolve_path(path_text: str) -> Path:
+    raw = Path(path_text)
+    if raw.is_absolute():
+        return raw
+    return BASE_DIR.parent / raw
+
+
+def _collect_vit_candidates() -> list[tuple[Path, Path, Path | None, float]]:
+    candidates: list[tuple[Path, Path, Path | None, float]] = []
+    for candidate_dir in VIT_CANDIDATE_DIRS:
+        class_paths = [candidate_dir / "class_names_vit.json", candidate_dir / "class_names.json"]
+        for model_name in ("skin_classifier_vit.pt", "best_model.pt"):
+            model_path = candidate_dir / model_name
+            if not model_path.exists():
+                continue
+            class_path = next((path for path in class_paths if path.exists()), None)
+            if class_path is None:
+                continue
+            metrics_path = candidate_dir / "metrics.json"
+            accuracy = -1.0
+            if metrics_path.exists():
+                try:
+                    accuracy = float(_read_json(metrics_path).get("accuracy", -1.0))
+                except Exception:
+                    accuracy = -1.0
+            candidates.append((model_path, class_path, metrics_path if metrics_path.exists() else None, accuracy))
+    candidates.sort(key=lambda item: item[3], reverse=True)
+    return candidates
+
+
+def _load_vit_runtime(model_path: Path, class_path: Path) -> dict[str, Any]:
+    import torch
+    import timm
+
+    metadata = _read_json(class_path)
+    checkpoint = torch.load(model_path, map_location="cpu")
+
+    class_order = metadata["class_order"]
+    classes = [metadata["app_labels"][class_key] for class_key in class_order]
+    image_size = int(checkpoint.get("image_size", metadata.get("image_size", 224)))
+    model_name = checkpoint.get("model_name", metadata.get("model_name", "vit_tiny_patch16_224"))
+    state_dict = checkpoint.get("state_dict", checkpoint)
+
+    vit_model = timm.create_model(
+        model_name,
+        pretrained=False,
+        num_classes=len(class_order),
+        img_size=image_size,
+    )
+    vit_model.load_state_dict(state_dict, strict=True)
+    vit_model.eval()
+
+    return {
+        "backend": "pytorch_vit",
+        "model": vit_model,
+        "classes": classes,
+        "image_size": image_size,
+        "model_path": str(model_path),
+        "torch": torch,
+    }
+
+
+def _load_vit_ensemble_runtime(metadata_path: Path) -> dict[str, Any]:
+    metadata = _read_json(metadata_path)
+    members_raw = metadata.get("members", [])
+    if not members_raw:
+        raise RuntimeError("vit ensemble metadata has no members")
+
+    members: list[dict[str, Any]] = []
+    classes: list[str] | None = None
+    class_order: list[str] | None = None
+    weight_sum = 0.0
+
+    for member_cfg in members_raw:
+        model_path = _resolve_path(member_cfg["model_path"])
+        class_path = _resolve_path(member_cfg["class_path"])
+        weight = float(member_cfg.get("weight", 1.0))
+
+        runtime = _load_vit_runtime(model_path, class_path)
+        member_order = _read_json(class_path)["class_order"]
+        if class_order is None:
+            class_order = member_order
+            classes = runtime["classes"]
+        elif member_order != class_order:
+            raise RuntimeError(f"class order mismatch for ensemble member: {model_path}")
+
+        members.append(
+            {
+                "model": runtime["model"],
+                "image_size": runtime["image_size"],
+                "weight": weight,
+            }
+        )
+        weight_sum += weight
+
+    if classes is None or weight_sum <= 0:
+        raise RuntimeError("invalid ensemble configuration")
+
+    return {
+        "backend": "pytorch_vit_ensemble",
+        "model": members[0]["model"],
+        "members": members,
+        "classes": classes,
+        "image_size": max(member["image_size"] for member in members),
+        "model_path": str(metadata_path),
+        "torch": __import__("torch"),
+        "weight_sum": weight_sum,
+    }
+
+
+def _load_keras_runtime() -> dict[str, Any] | None:
+    try:
+        from tensorflow.keras.models import load_model
+    except Exception:
+        return None
+
     for model_path, class_path in RETRAINED_CANDIDATES:
         if model_path.exists() and class_path.exists():
-            with class_path.open() as handle:
-                metadata = json.load(handle)
+            metadata = _read_json(class_path)
             class_order = metadata["class_order"]
             classes = [metadata["app_labels"][class_key] for class_key in class_order]
             image_size = metadata.get("image_size", 224)
-            return load_model(model_path), classes, image_size
+            return {
+                "backend": "keras",
+                "model": load_model(model_path),
+                "classes": classes,
+                "image_size": image_size,
+                "model_path": str(model_path),
+            }
 
     legacy_model_path = BASE_DIR / "skin_disorder_classifier_EfficientNetB2.h5"
-    return load_model(legacy_model_path), LEGACY_CLASSES, 300
+    if legacy_model_path.exists() and legacy_model_path.stat().st_size > 1_000_000:
+        return {
+            "backend": "keras",
+            "model": load_model(legacy_model_path),
+            "classes": LEGACY_CLASSES,
+            "image_size": 300,
+            "model_path": str(legacy_model_path),
+        }
+    return None
+
+
+def load_runtime_model() -> dict[str, Any]:
+    if VIT_ENSEMBLE_METADATA.exists():
+        try:
+            runtime = _load_vit_ensemble_runtime(VIT_ENSEMBLE_METADATA)
+            print(f"[runtime] using PyTorch ViT ensemble: {runtime['model_path']}", flush=True)
+            return runtime
+        except Exception as exc:
+            print(f"[runtime] skipped ViT ensemble {VIT_ENSEMBLE_METADATA}: {exc}", flush=True)
+
+    # Prefer the best available ViT artifact if it exists.
+    for model_path, class_path, _, _ in _collect_vit_candidates():
+        try:
+            runtime = _load_vit_runtime(model_path, class_path)
+            print(f"[runtime] using PyTorch ViT model: {runtime['model_path']}", flush=True)
+            return runtime
+        except Exception as exc:
+            print(f"[runtime] skipped ViT candidate {model_path}: {exc}", flush=True)
+
+    # Fallback to Keras retrained artifacts or legacy model.
+    runtime = _load_keras_runtime()
+    if runtime is not None:
+        print(f"[runtime] using Keras model: {runtime['model_path']}", flush=True)
+        return runtime
+
+    raise RuntimeError("No usable runtime model was found for website inference")
+
+
+def predict_with_keras(runtime: dict[str, Any], image: Image.Image) -> np.ndarray:
+    from tensorflow.keras.preprocessing.image import img_to_array
+
+    img = image.resize((runtime["image_size"], runtime["image_size"]))
+    img_array = img_to_array(img)
+    batch = np.expand_dims(img_array, axis=0)
+    probabilities = runtime["model"].predict(batch, verbose=0)[0]
+    return probabilities
+
+
+def predict_with_vit(runtime: dict[str, Any], image: Image.Image) -> np.ndarray:
+    if runtime["backend"] == "pytorch_vit_ensemble":
+        aggregate = None
+        for member in runtime["members"]:
+            resized = image.resize((member["image_size"], member["image_size"]))
+            array = np.asarray(resized, dtype=np.float32) / 255.0
+            array = (array - IMAGENET_MEAN) / IMAGENET_STD
+            tensor = runtime["torch"].from_numpy(array).permute(2, 0, 1).unsqueeze(0)
+
+            with runtime["torch"].no_grad():
+                logits = member["model"](tensor)
+                probabilities = runtime["torch"].softmax(logits, dim=1).cpu().numpy()[0]
+
+            weighted = probabilities * float(member["weight"])
+            aggregate = weighted if aggregate is None else aggregate + weighted
+
+        return aggregate / float(runtime["weight_sum"])
+
+    resized = image.resize((runtime["image_size"], runtime["image_size"]))
+    array = np.asarray(resized, dtype=np.float32) / 255.0
+    array = (array - IMAGENET_MEAN) / IMAGENET_STD
+    tensor = runtime["torch"].from_numpy(array).permute(2, 0, 1).unsqueeze(0)
+
+    with runtime["torch"].no_grad():
+        logits = runtime["model"](tensor)
+        probabilities = runtime["torch"].softmax(logits, dim=1).cpu().numpy()[0]
+    return probabilities
 
 
 # Loading the model
-model, classes, image_size = load_runtime_model()
+RUNTIME = load_runtime_model()
+model = RUNTIME["model"]
+classes = RUNTIME["classes"]
+image_size = RUNTIME["image_size"]
 
 # Loading the json file with the skin disorders
 def get_treatment(path):
@@ -133,23 +343,19 @@ def predict():
         return render_template('error.html', error='The uploaded image could not be processed.\
                                                     Please ensure that the image contains skin and try again.')
 
-    # Preprocess the image
-    img = image.resize((image_size, image_size))
-    img_array = img_to_array(img)
-    # The saved model already includes an input Rescaling layer.
-    # Keep raw pixel values here to avoid normalizing twice.
-    img = img_array
-    image = np.expand_dims(img, axis=0)
+    # Make prediction using the active backend.
+    if RUNTIME["backend"] in {"pytorch_vit", "pytorch_vit_ensemble"}:
+        pred = predict_with_vit(RUNTIME, image)
+    else:
+        pred = predict_with_keras(RUNTIME, image)
 
-    # Make prediction
-    pred = model.predict(image)
-    class_idx = np.argmax(pred)
+    class_idx = int(np.argmax(pred))
 
     # Predicted class
     pred_class = classes[class_idx]
 
     # Probability of prediction
-    prob = pred[0][class_idx]
+    prob = float(pred[class_idx])
 
     # Set probability threshold
     threshold = 0.6

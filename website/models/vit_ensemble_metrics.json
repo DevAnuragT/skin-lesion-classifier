@@ -1,0 +1,124 @@
+{
+  "ensemble_config": "/home/anurag/Skin-Disease-Image-Classifier-for-Accurate-and-Accessible-Diagnosis/website/models/vit_ensemble.json",
+  "split_dir": "/home/anurag/Skin-Disease-Image-Classifier-for-Accurate-and-Accessible-Diagnosis/datasets/hf_hybrid_150/splits/test",
+  "accuracy": 0.8532608695652174,
+  "macro_precision": 0.8610439126386908,
+  "macro_recall": 0.8532608695652174,
+  "per_class": {
+    "acne": {
+      "precision": 0.7931034482758621,
+      "recall": 1.0,
+      "support": 23
+    },
+    "bcc": {
+      "precision": 0.88,
+      "recall": 0.9565217391304348,
+      "support": 23
+    },
+    "bkl": {
+      "precision": 0.9090909090909091,
+      "recall": 0.8695652173913043,
+      "support": 23
+    },
+    "eczema": {
+      "precision": 0.875,
+      "recall": 0.6086956521739131,
+      "support": 23
+    },
+    "ak": {
+      "precision": 0.9130434782608695,
+      "recall": 0.9130434782608695,
+      "support": 23
+    },
+    "melanoma": {
+      "precision": 0.9090909090909091,
+      "recall": 0.8695652173913043,
+      "support": 23
+    },
+    "psoriasis": {
+      "precision": 0.7142857142857143,
+      "recall": 0.8695652173913043,
+      "support": 23
+    },
+    "tinea": {
+      "precision": 0.8947368421052632,
+      "recall": 0.7391304347826086,
+      "support": 23
+    }
+  },
+  "prediction_counts": [
+    {
+      "class_key": "acne",
+      "predicted_count": 29,
+      "true_count": 23
+    },
+    {
+      "class_key": "bcc",
+      "predicted_count": 25,
+      "true_count": 23
+    },
+    {
+      "class_key": "bkl",
+      "predicted_count": 22,
+      "true_count": 23
+    },
+    {
+      "class_key": "eczema",
+      "predicted_count": 16,
+      "true_count": 23
+    },
+    {
+      "class_key": "ak",
+      "predicted_count": 23,
+      "true_count": 23
+    },
+    {
+      "class_key": "melanoma",
+      "predicted_count": 22,
+      "true_count": 23
+    },
+    {
+      "class_key": "psoriasis",
+      "predicted_count": 28,
+      "true_count": 23
+    },
+    {
+      "class_key": "tinea",
+      "predicted_count": 19,
+      "true_count": 23
+    }
+  ],
+  "class_order": [
+    "acne",
+    "bcc",
+    "bkl",
+    "eczema",
+    "ak",
+    "melanoma",
+    "psoriasis",
+    "tinea"
+  ],
+  "samples": 184,
+  "members": [
+    {
+      "model_path": "artifacts/vit_strict80_tiny160/best_model.pt",
+      "class_path": "artifacts/vit_strict80_tiny160/class_names.json",
+      "weight": 0.5
+    },
+    {
+      "model_path": "artifacts/vit_220_tiny224_lowaug/best_model.pt",
+      "class_path": "artifacts/vit_220_tiny224_lowaug/class_names.json",
+      "weight": 0.4
+    },
+    {
+      "model_path": "artifacts/vit_150_tiny224_lowaug/best_model.pt",
+      "class_path": "artifacts/vit_150_tiny224_lowaug/class_names.json",
+      "weight": 0.05
+    },
+    {
+      "model_path": "artifacts/vit_150_tiny160/best_model.pt",
+      "class_path": "artifacts/vit_150_tiny160/class_names.json",
+      "weight": 0.05
+    }
+  ]
+}

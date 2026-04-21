@@ -1,0 +1,17 @@
+[
+  {
+    "name": "lowaug224",
+    "model_path": "artifacts/vit_150_tiny224_lowaug/best_model.pt",
+    "class_path": "artifacts/vit_150_tiny224_lowaug/class_names.json"
+  },
+  {
+    "name": "strict80",
+    "model_path": "artifacts/vit_strict80_tiny160/best_model.pt",
+    "class_path": "artifacts/vit_strict80_tiny160/class_names.json"
+  },
+  {
+    "name": "base160",
+    "model_path": "artifacts/vit_150_tiny160/best_model.pt",
+    "class_path": "artifacts/vit_150_tiny160/class_names.json"
+  }
+]

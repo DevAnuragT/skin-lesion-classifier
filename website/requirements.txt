@@ -6,3 +6,6 @@ opencv-python-headless
 Pillow
 tensorflow
 tf_keras
+torch
+torchvision
+timm

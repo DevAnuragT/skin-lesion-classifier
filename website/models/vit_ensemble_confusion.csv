@@ -1,0 +1,9 @@
+true/pred,acne,bcc,bkl,eczema,ak,melanoma,psoriasis,tinea
+acne,23,0,0,0,0,0,0,0
+bcc,0,22,0,0,1,0,0,0
+bkl,0,0,20,0,1,2,0,0
+eczema,3,0,0,14,0,0,5,1
+ak,0,2,0,0,21,0,0,0
+melanoma,0,1,2,0,0,20,0,0
+psoriasis,1,0,0,1,0,0,20,1
+tinea,2,0,0,1,0,0,3,17

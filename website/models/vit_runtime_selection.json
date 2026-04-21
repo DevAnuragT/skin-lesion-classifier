@@ -1,0 +1,13 @@
+{
+  "source_artifact": "artifacts/vit_150_tiny160",
+  "source_model": "artifacts/vit_150_tiny160/best_model.pt",
+  "source_class_names": "artifacts/vit_150_tiny160/class_names.json",
+  "metrics": {
+    "accuracy": 0.7119565217391305,
+    "macro_precision": 0.7035601045201173,
+    "macro_recall": 0.7119565217391305
+  },
+  "promoted_model": "website/models/skin_classifier_vit.pt",
+  "promoted_class_names": "website/models/class_names_vit.json",
+  "promoted_metrics": "website/models/metrics.json"
+}

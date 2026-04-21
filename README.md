@@ -61,4 +61,45 @@ The repository includes reproducible scripts for dataset construction and retrai
 - `scripts/build_hf_hybrid_dataset.py`
 - `scripts/train_model.py`
 
+For the ViT workflow, use a single orchestrator command from repository root:
+
+```bash
+source .venv/bin/activate
+python scripts/run_vit_pipeline.py --mode full --skip-existing
+```
+
+What this runs automatically:
+
+- selected ViT profiles (unless skipped by existing metrics)
+- best-checkpoint promotion into `website/models/`
+- metrics summary and docs plot refresh in `docs/plots/`
+- website runtime validation for selected backend/model
+
+Ensemble inference support:
+
+- If `website/models/vit_ensemble.json` exists, the Flask runtime will load a weighted ViT ensemble first.
+- If ensemble loading fails, runtime safely falls back to single-model ViT / Keras logic.
+
+Accuracy-oriented methods now implemented in `scripts/train_vit.py`:
+
+- augmentation levels (`--aug-level`: `light|medium|strong`)
+- optional mixup/cutmix (`--mixup-alpha`, `--cutmix-alpha`, `--mixup-prob`)
+- random erasing (`--random-erasing`)
+- ViT stochastic depth control (`--drop-path-rate`)
+- exponential moving average model tracking (`--ema-decay`)
+- two-stage transfer learning (`--freeze-backbone-epochs`)
+- optional focal loss (`--loss-type focal`, `--focal-gamma`)
+- hard-class sampling (`--class-sampling hard`, `--hard-class-boost`)
+- test-time horizontal flip averaging (`--tta-flip`)
+
+To run only the new stronger profile:
+
+```bash
+source .venv/bin/activate
+python scripts/run_vit_pipeline.py --mode train --profiles hf150_tiny160_v2_strongreg
+python scripts/run_vit_pipeline.py --mode promote
+python scripts/run_vit_pipeline.py --mode report
+python scripts/run_vit_pipeline.py --mode validate
+```
+
 These scripts were used to create balanced 8-class datasets and evaluate replacement model artifacts.

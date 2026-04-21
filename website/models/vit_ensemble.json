@@ -1,0 +1,26 @@
+{
+  "name": "vit_weighted_ensemble_safe_tuned_v4",
+  "selection_basis": "coarse simplex search on 5-model pool with leakage-safe holdout monitoring",
+  "members": [
+    {
+      "model_path": "artifacts/vit_strict80_tiny160/best_model.pt",
+      "class_path": "artifacts/vit_strict80_tiny160/class_names.json",
+      "weight": 0.5
+    },
+    {
+      "model_path": "artifacts/vit_220_tiny224_lowaug/best_model.pt",
+      "class_path": "artifacts/vit_220_tiny224_lowaug/class_names.json",
+      "weight": 0.4
+    },
+    {
+      "model_path": "artifacts/vit_150_tiny224_lowaug/best_model.pt",
+      "class_path": "artifacts/vit_150_tiny224_lowaug/class_names.json",
+      "weight": 0.05
+    },
+    {
+      "model_path": "artifacts/vit_150_tiny160/best_model.pt",
+      "class_path": "artifacts/vit_150_tiny160/class_names.json",
+      "weight": 0.05
+    }
+  ]
+}

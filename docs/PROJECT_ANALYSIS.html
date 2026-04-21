@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Skin Lesion Classifier - Project Analysis</title>
+  <style>
+    :root {
+      --bg: #f7f7fb;
+      --card: #ffffff;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --accent: #0f766e;
+      --accent-soft: #e6fffa;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: radial-gradient(circle at top right, #f0fdfa 0%, var(--bg) 36%);
+      color: var(--ink);
+      line-height: 1.5;
+    }
+
+    .container {
+      width: min(1120px, 92%);
+      margin: 28px auto 42px;
+    }
+
+    .hero {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 10px 28px rgba(15, 118, 110, 0.06);
+    }
+
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.5rem, 2.8vw, 2rem);
+      letter-spacing: 0.2px;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.98rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .kpi {
+      background: var(--accent-soft);
+      border: 1px solid #c7f2ed;
+      border-radius: 12px;
+      padding: 14px;
+    }
+
+    .kpi .label {
+      color: #0f766e;
+      font-size: 0.86rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .kpi .value {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #134e4a;
+    }
+
+    .section {
+      margin-top: 20px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px;
+    }
+
+    .section h2 {
+      margin: 0 0 12px;
+      font-size: 1.16rem;
+    }
+
+    .caption {
+      color: var(--muted);
+      font-size: 0.92rem;
+      margin-bottom: 12px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 680px;
+      background: #fff;
+    }
+
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      white-space: nowrap;
+      font-size: 0.93rem;
+    }
+
+    th {
+      background: #f9fafb;
+      font-weight: 650;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .graphs {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 18px;
+    }
+
+    .graph-card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: #fff;
+    }
+
+    .graph-card h3 {
+      margin: 4px 6px 10px;
+      font-size: 1rem;
+    }
+
+    .graph-card img {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 8px;
+      border: 1px solid #eef0f3;
+    }
+
+    .footnote {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <section class="hero">
+      <h1>Skin Lesion Classifier - Project Analysis</h1>
+      <p>
+        Consolidated technical results for the current best runtime model
+        (weighted ViT ensemble from `website/models/vit_ensemble.json`).
+      </p>
+      <p class="footnote">
+        Note: dataset versions share source images. A leakage-safe check (excluding hf_hybrid_220 train/validation overlaps)
+        also improved from 81.88% to 85.00%, so the gain is not solely due to overlap.
+      </p>
+      <div class="grid">
+        <div class="kpi">
+          <div class="label">Accuracy</div>
+          <div class="value">85.33%</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Macro Precision</div>
+          <div class="value">86.10%</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Macro Recall</div>
+          <div class="value">85.33%</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Class-wise Precision / Recall</h2>
+      <div class="caption">
+        Precision shows correctness of predicted class; Recall shows coverage of actual class samples.
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Class</th>
+              <th>Precision</th>
+              <th>Recall</th>
+              <th>Support</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Acne</td><td>0.7931</td><td>1.0000</td><td>23</td></tr>
+            <tr><td>Actinic keratosis(AK)</td><td>0.9130</td><td>0.9130</td><td>23</td></tr>
+            <tr><td>Atopic dermatitis(Eczema)</td><td>0.8750</td><td>0.6087</td><td>23</td></tr>
+            <tr><td>Basal cell carcinoma</td><td>0.8800</td><td>0.9565</td><td>23</td></tr>
+            <tr><td>Benign Keratosis-like Lesions (BKL)</td><td>0.9091</td><td>0.8696</td><td>23</td></tr>
+            <tr><td>Melanoma</td><td>0.9091</td><td>0.8696</td><td>23</td></tr>
+            <tr><td>Psoriasis</td><td>0.7143</td><td>0.8696</td><td>23</td></tr>
+            <tr><td>Tinea(Ringworm)</td><td>0.8947</td><td>0.7391</td><td>23</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Confusion Matrix Table</h2>
+      <div class="caption">
+        Rows are true classes; columns are predicted classes.
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>true/pred</th>
+              <th>acne</th>
+              <th>bcc</th>
+              <th>bkl</th>
+              <th>eczema</th>
+              <th>ak</th>
+              <th>melanoma</th>
+              <th>psoriasis</th>
+              <th>tinea</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>acne</td><td>23</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+            <tr><td>bcc</td><td>0</td><td>22</td><td>0</td><td>0</td><td>1</td><td>0</td><td>0</td><td>0</td></tr>
+            <tr><td>bkl</td><td>0</td><td>0</td><td>20</td><td>0</td><td>1</td><td>2</td><td>0</td><td>0</td></tr>
+            <tr><td>eczema</td><td>3</td><td>0</td><td>0</td><td>14</td><td>0</td><td>0</td><td>5</td><td>1</td></tr>
+            <tr><td>ak</td><td>0</td><td>2</td><td>0</td><td>0</td><td>21</td><td>0</td><td>0</td><td>0</td></tr>
+            <tr><td>melanoma</td><td>0</td><td>1</td><td>2</td><td>0</td><td>0</td><td>20</td><td>0</td><td>0</td></tr>
+            <tr><td>psoriasis</td><td>1</td><td>0</td><td>0</td><td>1</td><td>0</td><td>0</td><td>20</td><td>1</td></tr>
+            <tr><td>tinea</td><td>2</td><td>0</td><td>0</td><td>1</td><td>0</td><td>0</td><td>3</td><td>17</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Graphs</h2>
+      <div class="graphs">
+        <div class="graph-card">
+          <h3>1) Class-wise Precision and Recall</h3>
+          <img src="plots/precision_recall_by_class.png" alt="Class-wise precision and recall graph" />
+        </div>
+        <div class="graph-card">
+          <h3>2) True vs Predicted Counts by Class</h3>
+          <img src="plots/true_vs_predicted_counts.png" alt="True vs predicted class counts graph" />
+        </div>
+        <div class="graph-card">
+          <h3>3) Confusion Matrix Heatmap</h3>
+          <img src="plots/confusion_matrix_heatmap.png" alt="Confusion matrix heatmap graph" />
+        </div>
+      </div>
+      <div class="footnote">
+        Source files: `website/models/vit_ensemble_metrics.json` and
+        `website/models/vit_ensemble_confusion.csv`.
+      </div>
+    </section>
+  </div>
+</body>
+</html>

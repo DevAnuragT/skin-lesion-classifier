@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Skin Disease Classifier Student Group Project Report</title>
+  <style>
+    :root {
+      --ink: #1e293b;
+      --muted: #475569;
+      --border: #cbd5e1;
+      --accent: #0f766e;
+      --accent-2: #1d4ed8;
+      --bg: #f8fafc;
+      --page-w: 210mm;
+      --page-h: 297mm;
+      --pad: 18mm;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 8mm;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      line-height: 1.45;
+    }
+
+    .page {
+      width: var(--page-w);
+      min-height: var(--page-h);
+      margin: 0 auto 6mm;
+      padding: var(--pad);
+      background: #fff;
+      border: 1px solid var(--border);
+      page-break-after: always;
+    }
+
+    .page:last-child { page-break-after: auto; }
+
+    h1, h2, h3 {
+      margin: 0 0 10px;
+      line-height: 1.2;
+    }
+
+    h1 { font-size: 28px; color: var(--accent-2); }
+    h2 { font-size: 22px; color: var(--accent); border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; }
+    h3 { font-size: 17px; color: #0f172a; }
+
+    p, li { color: var(--ink); font-size: 14px; }
+    .muted { color: var(--muted); }
+
+    .meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 18px;
+      margin: 14px 0 16px;
+      font-size: 14px;
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .kpi {
+      border: 1px solid var(--border);
+      border-left: 6px solid var(--accent-2);
+      border-radius: 10px;
+      padding: 12px;
+      background: #f8fafc;
+    }
+
+    .kpi .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .kpi .value { font-size: 27px; font-weight: 700; color: #0f172a; }
+
+    .img-wide {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin: 8px 0 10px;
+    }
+
+    .img-half-wrap {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .img-half-wrap img {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 8px 9px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+
+    .small { font-size: 12px; }
+
+    @media print {
+      body { background: #fff; padding: 0; }
+      .page { margin: 0; border: none; }
+    }
+  </style>
+</head>
+<body>
+  <section class="page">
+    <h1>Skin Disease Image Classifier</h1>
+    <h3>Student Group Project Report</h3>
+    <p class="muted">Academic year 2025-2026</p>
+
+    <div class="meta">
+      <div><strong>Project Type:</strong> Applied Deep Learning (Medical Imaging)</div>
+      <div><strong>Team:</strong> Group Project (fill member names)</div>
+      <div><strong>Institution:</strong> (fill college or university)</div>
+      <div><strong>Guide or Mentor:</strong> (fill faculty name)</div>
+      <div><strong>Submission Date:</strong> 20 April 2026</div>
+      <div><strong>Report Version:</strong> v1.0 Final</div>
+    </div>
+
+    <h2>Executive Summary</h2>
+    <p>
+      This project develops a skin disease image classification system with a Vision Transformer (ViT)-based ensemble.
+      The final deployed ensemble improves performance significantly compared to the single-model baseline and achieves
+      robust class-level behavior across 8 diagnostic classes.
+    </p>
+
+    <div class="kpis">
+      <div class="kpi">
+        <div class="label">Final Accuracy</div>
+        <div class="value">85.33%</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Macro Precision</div>
+        <div class="value">86.10%</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Macro Recall</div>
+        <div class="value">85.33%</div>
+      </div>
+    </div>
+
+    <p class="small muted">
+      Evaluation set: hf_hybrid_150 test split, 184 images total (23 images per class).
+      Leakage-safe subset score (160 images): 85.00%.
+    </p>
+  </section>
+
+  <section class="page">
+    <h2>1. Problem Statement and Objectives</h2>
+    <p>
+      Skin disease diagnosis from images can improve accessibility and preliminary screening support. The objective is to
+      build a practical image classifier that predicts one of eight disease categories from dermoscopic or clinical images.
+    </p>
+
+    <h3>Target Classes</h3>
+    <ul>
+      <li>Acne</li>
+      <li>Basal Cell Carcinoma (BCC)</li>
+      <li>Benign Keratosis-like Lesions (BKL)</li>
+      <li>Atopic Dermatitis (Eczema)</li>
+      <li>Actinic Keratosis (AK)</li>
+      <li>Melanoma</li>
+      <li>Psoriasis</li>
+      <li>Tinea (Ringworm)</li>
+    </ul>
+
+    <h3>Project Objectives</h3>
+    <ul>
+      <li>Build a robust and CPU-friendly ViT pipeline.</li>
+      <li>Improve accuracy over baseline single-model approaches.</li>
+      <li>Integrate the best model into the web application runtime.</li>
+      <li>Generate reproducible evaluation artifacts (metrics and confusion matrix).</li>
+      <li>Document outcomes with visual evidence and class-wise analysis.</li>
+    </ul>
+  </section>
+
+  <section class="page">
+    <h2>2. Dataset and Experimental Setup</h2>
+    <h3>Dataset Strategy</h3>
+    <p>
+      The project used curated hybrid splits with balanced class support. Multiple training distributions were explored,
+      including strict and expanded variants. The final evaluation is reported on a fixed 8-class test split.
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Configuration</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Primary evaluation split</td><td>datasets/hf_hybrid_150/splits/test</td></tr>
+        <tr><td>Number of classes</td><td>8</td></tr>
+        <tr><td>Test images per class</td><td>23</td></tr>
+        <tr><td>Total test samples</td><td>184</td></tr>
+        <tr><td>Runtime constraint</td><td>CPU training and evaluation</td></tr>
+        <tr><td>Model family</td><td>Vision Transformer (ViT)</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Leakage-Safe Validation Note</h3>
+    <p>
+      Since some dataset versions share source images, overlap-aware checks were performed. A leakage-safe subset of the
+      test split (excluding overlap with hf_hybrid_220 train and validation) still showed improved accuracy, supporting
+      generalization of the final ensemble.
+    </p>
+  </section>
+
+  <section class="page">
+    <h2>3. Model Architecture and Training Pipeline</h2>
+    <h3>Core Approach</h3>
+    <ul>
+      <li>Primary architecture: vit_tiny_patch16_224 variants.</li>
+      <li>Model-specific image sizes: 160 and 224.</li>
+      <li>Training regularization: label smoothing, drop-path, random erasing, TTA in selected runs.</li>
+      <li>Optimization under CPU budget with early stopping and curated profile runs.</li>
+      <li>Final runtime uses weighted ensemble inference.</li>
+    </ul>
+
+    <h3>Final Ensemble Members</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Artifact</th>
+          <th>Role</th>
+          <th>Weight</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>vit_strict80_tiny160</td><td>High precision anchor</td><td>0.50</td></tr>
+        <tr><td>vit_220_tiny224_lowaug</td><td>Generalization booster</td><td>0.40</td></tr>
+        <tr><td>vit_150_tiny224_lowaug</td><td>Calibration support</td><td>0.05</td></tr>
+        <tr><td>vit_150_tiny160</td><td>Calibration support</td><td>0.05</td></tr>
+      </tbody>
+    </table>
+
+    <img class="img-wide" src="report_assets/ensemble_weights_pie.png" alt="Ensemble member weights" />
+  </section>
+
+  <section class="page">
+    <h2>4. Final Quantitative Results</h2>
+
+    <img class="img-wide" src="report_assets/kpi_summary.png" alt="KPI Summary chart" />
+
+    <h3>Primary Metrics Table</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>Final Ensemble</th>
+          <th>Single ViT Baseline</th>
+          <th>Absolute Gain</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Accuracy</td><td>0.8533</td><td>0.7120</td><td>+0.1413</td></tr>
+        <tr><td>Macro Precision</td><td>0.8610</td><td>0.7036</td><td>+0.1574</td></tr>
+        <tr><td>Macro Recall</td><td>0.8533</td><td>0.7120</td><td>+0.1413</td></tr>
+        <tr><td>Leakage-safe Accuracy</td><td>0.8500</td><td>0.8188 previous blend</td><td>+0.0312</td></tr>
+      </tbody>
+    </table>
+
+    <p class="small muted">
+      Baseline values from website/models/metrics.json; final ensemble values from website/models/vit_ensemble_metrics.json.
+    </p>
+  </section>
+
+  <section class="page">
+    <h2>5. Class-wise Performance Analysis</h2>
+    <img class="img-wide" src="report_assets/precision_recall_by_class.png" alt="Class precision and recall" />
+    <img class="img-wide" src="report_assets/f1_by_class.png" alt="Class-wise F1" />
+
+    <h3>Observations</h3>
+    <ul>
+      <li>Acne and BCC classes show very strong recall and stable precision.</li>
+      <li>AK and Melanoma classes maintain balanced precision-recall behavior.</li>
+      <li>Eczema remains the most challenging class in recall (0.6087), indicating higher confusion with related classes.</li>
+      <li>Tinea shows high precision (0.8947) with moderate recall (0.7391), suggesting conservative prediction behavior.</li>
+    </ul>
+  </section>
+
+  <section class="page">
+    <h2>6. Confusion Matrix and Error Patterns</h2>
+    <img class="img-wide" src="report_assets/confusion_matrix_heatmap.png" alt="Confusion matrix heatmap" />
+
+    <h3>Key Error Modes</h3>
+    <ul>
+      <li>Eczema misclassified mostly as Psoriasis and Acne in selected instances.</li>
+      <li>AK occasionally predicted as BCC.</li>
+      <li>Tinea occasionally confused with Psoriasis and Acne.</li>
+      <li>Acne has perfect recall in the final run (23 out of 23).</li>
+    </ul>
+
+    <p>
+      These patterns are clinically reasonable where visual similarity is high. Future work should target difficult class
+      boundaries with targeted augmentation and class-specific data curation.
+    </p>
+  </section>
+
+  <section class="page">
+    <h2>7. Deployment and Application Integration</h2>
+    <h3>Integration Summary</h3>
+    <ul>
+      <li>Runtime configuration stored in website/models/vit_ensemble.json.</li>
+      <li>Evaluation outputs saved in website/models/vit_ensemble_metrics.json and vit_ensemble_confusion.csv.</li>
+      <li>Flask app runtime loads ensemble member checkpoints for weighted inference.</li>
+      <li>Fallback paths retained for legacy model compatibility.</li>
+    </ul>
+
+    <h3>Operational Characteristics</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Aspect</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Inference backend</td><td>PyTorch ViT ensemble</td></tr>
+        <tr><td>Number of classes</td><td>8</td></tr>
+        <tr><td>Model selection policy</td><td>Weighted voting by softmax probabilities</td></tr>
+        <tr><td>Runtime target</td><td>CPU compatible</td></tr>
+        <tr><td>Artifacts versioning</td><td>Saved under artifacts and website/models</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="page">
+    <h2>8. Limitations and Risk Assessment</h2>
+    <h3>Current Limitations</h3>
+    <ul>
+      <li>Accuracy is strong for a CPU-constrained student project, but still below 90% target.</li>
+      <li>Certain classes with visual overlap (Eczema, Psoriasis, Tinea) remain harder.</li>
+      <li>Dataset overlap risk across versions requires strict split governance.</li>
+      <li>No uncertainty calibration or confidence rejection policy yet.</li>
+    </ul>
+
+    <h3>Risk Mitigation Already Applied</h3>
+    <ul>
+      <li>Leakage-safe subset verification included before final claims.</li>
+      <li>Ensemble-based stabilization rather than single checkpoint dependence.</li>
+      <li>Consistent metric export and reproducible evaluation scripts.</li>
+    </ul>
+
+    <h3>Ethical Statement</h3>
+    <p>
+      This system is for educational and research use only and does not replace clinical diagnosis by qualified medical
+      professionals.
+    </p>
+  </section>
+
+  <section class="page">
+    <h2>9. Conclusion and Future Scope</h2>
+    <h3>Conclusion</h3>
+    <p>
+      The project successfully delivered an integrated ViT-based skin disease classifier with a final ensemble score of
+      85.33% accuracy and 86.10% macro precision on the primary test split. The workflow covers model training,
+      optimization, deployment integration, and reporting with reproducible artifacts.
+    </p>
+
+    <h3>Future Scope</h3>
+    <ul>
+      <li>Train higher-capacity ViT variants with longer schedules on curated non-overlapping data.</li>
+      <li>Add confidence calibration and abstention logic for uncertain samples.</li>
+      <li>Include external benchmark validation to estimate out-of-distribution robustness.</li>
+      <li>Add clinician-in-the-loop review module in the web application.</li>
+    </ul>
+
+    <h3>References to Core Artifacts</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Artifact</th>
+          <th>Purpose</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>website/models/vit_ensemble.json</td><td>Final deployed ensemble config</td></tr>
+        <tr><td>website/models/vit_ensemble_metrics.json</td><td>Final evaluation metrics</td></tr>
+        <tr><td>website/models/vit_ensemble_confusion.csv</td><td>Confusion matrix values</td></tr>
+        <tr><td>docs/report_assets/*.png</td><td>Report and presentation visualizations</td></tr>
+      </tbody>
+    </table>
+
+    <p class="small muted">End of report.</p>
+  </section>
+</body>
+</html>
