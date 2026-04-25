@@ -76,6 +76,19 @@
           <p class="testimonial-text-three">
             Prediction confidence: <strong>{{ confidence_percentage }}%</strong>
           </p>
+          <p class="testimonial-text-three">
+            Confidence band: <strong>{{ confidence_band }}</strong>
+          </p>
+          <p class="testimonial-text-three">
+            Top model candidates:
+          </p>
+          <div class="testimonial-text-three" style="text-align:left; max-width: 520px; margin: 0 auto 12px auto;">
+            <ol>
+              {% for candidate in top_predictions %}
+              <li>{{ candidate.label }} - {{ candidate.probability }}%</li>
+              {% endfor %}
+            </ol>
+          </div>
           <div class="mobile-margin-top-10">
             <form action="{{ url_for('predict') }}" method="post" enctype="multipart/form-data">
               <label class="button-primary w-button">

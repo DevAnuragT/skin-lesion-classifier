@@ -26,6 +26,8 @@ VIT_CANDIDATE_DIRS = [
     BASE_DIR.parent / "artifacts" / "vit_benchmark_cpu",
 ]
 VIT_ENSEMBLE_METADATA = BASE_DIR / "models" / "vit_ensemble.json"
+VIT_PROMOTED_MODEL = BASE_DIR / "models" / "skin_classifier_vit.pt"
+VIT_PROMOTED_CLASSES = BASE_DIR / "models" / "class_names_vit.json"
 
 from flask import Flask, render_template, request, jsonify
 import numpy as np
@@ -271,6 +273,17 @@ model = RUNTIME["model"]
 classes = RUNTIME["classes"]
 image_size = RUNTIME["image_size"]
 
+FALLBACK_RUNTIME = None
+if RUNTIME["backend"] == "pytorch_vit_ensemble":
+    try:
+        if VIT_PROMOTED_MODEL.exists() and VIT_PROMOTED_CLASSES.exists():
+            candidate = _load_vit_runtime(VIT_PROMOTED_MODEL, VIT_PROMOTED_CLASSES)
+            if candidate["classes"] == classes:
+                FALLBACK_RUNTIME = candidate
+                print("[runtime] enabled low-confidence fallback model", flush=True)
+    except Exception as exc:
+        print(f"[runtime] skipped fallback model: {exc}", flush=True)
+
 # Loading the json file with the skin disorders
 def get_treatment(path):
     with open(path) as f:
@@ -288,6 +301,16 @@ TREATMENT_ALIASES = {
 def get_treatments_for_prediction(predicted_label):
     canonical_label = TREATMENT_ALIASES.get(predicted_label, predicted_label)
     return treatment_dict.get(canonical_label, [])
+
+
+def confidence_band(probability: float) -> str:
+    if probability >= 0.75:
+        return "High"
+    if probability >= 0.55:
+        return "Moderate"
+    if probability >= 0.4:
+        return "Low"
+    return "Very low"
 
 # function to check if the file is an allowed image type
 def allowed_file(filename):
@@ -338,32 +361,49 @@ def predict():
             error='The uploaded image could not be opened. Please try another image file.'
         )
 
-    # check if the image contains human skin
-    if not is_skin(np.array(image)):
-        return render_template('error.html', error='The uploaded image could not be processed.\
-                                                    Please ensure that the image contains skin and try again.')
-
     # Make prediction using the active backend.
     if RUNTIME["backend"] in {"pytorch_vit", "pytorch_vit_ensemble"}:
         pred = predict_with_vit(RUNTIME, image)
     else:
         pred = predict_with_keras(RUNTIME, image)
 
+    # For harder web images, ensemble confidence can be under-calibrated.
+    # If confidence is low, compare against the promoted single ViT model.
+    if RUNTIME["backend"] == "pytorch_vit_ensemble" and FALLBACK_RUNTIME is not None:
+        ensemble_conf = float(np.max(pred))
+        if ensemble_conf < 0.45:
+            fallback_pred = predict_with_vit(FALLBACK_RUNTIME, image)
+            if float(np.max(fallback_pred)) > ensemble_conf:
+                pred = fallback_pred
+
     class_idx = int(np.argmax(pred))
+    sorted_indices = np.argsort(pred)[::-1]
 
     # Predicted class
     pred_class = classes[class_idx]
+    second_idx = int(sorted_indices[1]) if len(sorted_indices) > 1 else class_idx
+    second_prob = float(pred[second_idx])
 
     # Probability of prediction
     prob = float(pred[class_idx])
 
-    # Set probability threshold
-    threshold = 0.6
+    # These web/phone samples are often less calibrated under ViT softmax.
+    # Use a lower threshold and combine it with a soft skin-content gate.
+    threshold = 0.32 if RUNTIME["backend"] in {"pytorch_vit", "pytorch_vit_ensemble"} else 0.6
+    skin_detected = is_skin(np.array(image))
 
-    # Check if probability is above threshold
     if prob < threshold:
         return render_template('error.html', error='Inconclusive result.\
                                                     Please consult a healthcare professional for an accurate diagnosis')
+
+    if not skin_detected and prob < 0.35:
+        return render_template('error.html', error='The uploaded image could not be processed.\
+                                                    Please ensure that the image contains a clear skin lesion and try again.')
+
+    # Additional ambiguity check for near-tie outcomes.
+    if prob < 0.55 and (prob - second_prob) < 0.12:
+        return render_template('error.html', error='Inconclusive result.\
+                                                    The top predictions are too close for a reliable result.')
 
     # Treatment options
     treatments = get_treatments_for_prediction(pred_class)
@@ -374,6 +414,14 @@ def predict():
         prediction=pred_class,
         probability=prob,
         confidence_percentage=round(float(prob) * 100, 1),
+        confidence_band=confidence_band(prob),
+        top_predictions=[
+            {
+                "label": classes[int(idx)],
+                "probability": round(float(pred[int(idx)]) * 100, 1),
+            }
+            for idx in sorted_indices[:3]
+        ],
         treatments=treatments,
     )
 
